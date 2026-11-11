@@ -1,1 +1,185 @@
 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>SOMBRAS DE LA CIUDAD</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden;background:#111;color:white;font-family:Arial}
+canvas{display:block}
+#hud{position:absolute;top:12px;left:12px;pointer-events:none}
+#title{font-size:19px;font-weight:bold;text-shadow:0 2px 5px black}
+#mission{margin-top:8px;background:#111b;padding:10px;border-radius:8px;font-size:12px}
+#controls{position:absolute;bottom:22px;left:18px;right:18px;display:flex;justify-content:space-between;align-items:end}
+.pad{display:grid;grid-template-columns:55px 55px 55px;grid-template-rows:55px 55px 55px;gap:5px}
+button{border:1px solid #ffffff66;background:#172333bb;color:white;border-radius:14px;font-size:23px;touch-action:none}
+.up{grid-column:2}.left{grid-column:1;grid-row:2}.down{grid-column:2;grid-row:2}.right{grid-column:3;grid-row:2}
+#action{width:75px;height:75px;border-radius:50%;background:#b52d27cc}
+#loading{position:absolute;inset:0;display:grid;place-items:center;background:#101923;text-align:center}
+</style>
+</head>
+<body>
+<div id="hud">
+<div id="title">SOMBRAS DE LA CIUDAD</div>
+<div id="mission">PUERTO DORADO<br>Explora la ciudad</div>
+</div>
+<div id="controls">
+<div class="pad">
+<button class="up" data-k="up">▲</button>
+<button class="left" data-k="left">◀</button>
+<button class="down" data-k="down">▼</button>
+<button class="right" data-k="right">▶</button>
+</div>
+<button id="action">●</button>
+</div>
+<div id="loading">CARGANDO PUERTO DORADO...</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+const loading=document.getElementById("loading");
+if(!window.THREE){loading.innerHTML="Necesitas conexión a Internet para cargar el motor 3D.";throw new Error("Three.js no cargó");}
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x87a9c3);
+scene.fog=new THREE.Fog(0x87a9c3,65,230);
+
+const camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,500);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xc7e5ff,0x42434a,2));
+const sun=new THREE.DirectionalLight(0xffe3bd,2.5);
+sun.position.set(-35,65,30);
+sun.castShadow=true;
+scene.add(sun);
+
+const mat=(color)=>new THREE.MeshStandardMaterial({color,roughness:.85});
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),mat(0x777c79));
+ground.rotation.x=-Math.PI/2;
+ground.position.y=-.15;
+ground.receiveShadow=true;
+scene.add(ground);
+
+function cube(w,h,d,x,y,z,color){
+const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(color));
+m.position.set(x,y+h/2,z);
+m.castShadow=true;m.receiveShadow=true;
+scene.add(m);return m;
+}
+
+cube(18,.12,220,0,0,0,0x33383d);
+cube(220,.12,18,0,.01,0,0x33383d);
+for(let i=-100;i<=100;i+=10){
+cube(.14,.025,1.7,0,.09,i,0xf4d77c);
+cube(1.7,.025,.14,i,.09,0,0xf4d77c);
+}
+for(let side of [-1,1]){
+cube(3,.3,220,side*11,.05,0,0xb8b4a8);
+cube(220,.3,3,0,.05,side*11,0xb8b4a8);
+}
+
+const colors=[0x9a8170,0x78899a,0xb1a18d,0x5d6c78,0xb7b5ad,0x79645c];
+for(let x=-90;x<=90;x+=18){
+for(let z=-90;z<=90;z+=18){
+if(Math.abs(x)<17||Math.abs(z)<17)continue;
+let h=12+Math.random()*35;
+let w=9+Math.random()*3;
+let d=9+Math.random()*3;
+let b=cube(w,h,d,x+(Math.random()-.5)*2,0,z+(Math.random()-.5)*2,colors[Math.floor(Math.random()*colors.length)]);
+for(let yy=3;yy<h-2;yy+=3){
+for(let xx=-w/2+1.2;xx<w/2;xx+=2){
+let win=new THREE.Mesh(new THREE.BoxGeometry(.9,1.25,.08),mat(0x9cc9d6));
+win.position.set(b.position.x+xx,yy,b.position.z+d/2+.05);
+scene.add(win);
+}
+}
+}
+}
+
+function tree(x,z){
+cube(.7,3,.7,x,0,z,0x65432c);
+let crown=new THREE.Mesh(new THREE.SphereGeometry(2.2,9,8),mat(0x326c46));
+crown.position.set(x,4,z);crown.castShadow=true;scene.add(crown);
+}
+for(let z=-95;z<=95;z+=12){tree(-13,z);tree(13,z);}
+for(let x=-95;x<=95;x+=12){tree(x,-13);tree(x,13);}
+
+for(let z=-90;z<=90;z+=22){
+for(let x of [-9,9]){
+cube(.2,5,.2,x,0,z,0x30363c);
+cube(1.3,.18,.3,x+(x<0?-.5:.5),5,z,0xe9d69a);
+}
+}
+
+const player=new THREE.Group();
+const body=new THREE.Mesh(new THREE.CapsuleGeometry(.65,1.1,4,8),mat(0x243e75));
+body.position.y=1.2;body.castShadow=true;player.add(body);
+const head=new THREE.Mesh(new THREE.SphereGeometry(.42,12,10),mat(0xd8a47e));
+head.position.y=2.25;player.add(head);
+const hair=new THREE.Mesh(new THREE.SphereGeometry(.43,12,8),mat(0x211b19));
+hair.position.set(0,2.48,0);hair.scale.y=.55;player.add(hair);
+scene.add(player);
+
+let keys={up:false,down:false,left:false,right:false};
+let angle=0;
+function setKey(k,v){keys[k]=v;}
+document.querySelectorAll("[data-k]").forEach(b=>{
+const k=b.dataset.k;
+b.addEventListener("pointerdown",e=>{e.preventDefault();setKey(k,true);});
+["pointerup","pointercancel","pointerleave"].forEach(ev=>b.addEventListener(ev,()=>setKey(k,false)));
+});
+addEventListener("keydown",e=>{
+if(e.key==="ArrowUp"||e.key==="w")keys.up=true;
+if(e.key==="ArrowDown"||e.key==="s")keys.down=true;
+if(e.key==="ArrowLeft"||e.key==="a")keys.left=true;
+if(e.key==="ArrowRight"||e.key==="d")keys.right=true;
+});
+addEventListener("keyup",e=>{
+if(e.key==="ArrowUp"||e.key==="w")keys.up=false;
+if(e.key==="ArrowDown"||e.key==="s")keys.down=false;
+if(e.key==="ArrowLeft"||e.key==="a")keys.left=false;
+if(e.key==="ArrowRight"||e.key==="d")keys.right=false;
+});
+
+document.getElementById("action").onclick=()=>{
+document.getElementById("mission").innerHTML="¡Bienvenido a Puerto Dorado!<br>Diego y Ángel tienen una ciudad que explorar.";
+};
+
+camera.position.set(0,7,12);
+const clock=new THREE.Clock();
+
+function animate(){
+requestAnimationFrame(animate);
+let dt=Math.min(clock.getDelta(),.04);
+if(keys.left)angle+=2*dt;
+if(keys.right)angle-=2*dt;
+let speed=keys.up?12:keys.down?-8:0;
+if(speed!==0){
+player.position.x+=Math.sin(angle)*speed*dt;
+player.position.z+=Math.cos(angle)*speed*dt;
+}
+player.rotation.y=angle;
+player.position.x=THREE.MathUtils.clamp(player.position.x,-100,100);
+player.position.z=THREE.MathUtils.clamp(player.position.z,-100,100);
+let target=new THREE.Vector3(player.position.x-Math.sin(angle)*9,6,player.position.z-Math.cos(angle)*9);
+camera.position.lerp(target,.09);
+camera.lookAt(player.position.x,1.4,player.position.z);
+renderer.render(scene,camera);
+}
+animate();
+loading.remove();
+
+addEventListener("resize",()=>{
+camera.aspect=innerWidth/innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>
+
